@@ -6,7 +6,7 @@ __pycache__/
 .env.*
 !.env.example
 artifacts/
+node_modules/
 deployments/*.json
 !deployments/template.json
 *.log
-

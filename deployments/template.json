@@ -1,33 +1,59 @@
 {
-  "schema_version": 1,
+  "schema_version": "2.0",
   "project": "canon-world-state-referee",
-  "network": "NETWORK_NAME",
-  "chain_id": 0,
+  "status": "IN_PROGRESS",
   "recorded_at": "YYYY-MM-DDTHH:MM:SSZ",
-  "source_commit": "FULL_COMMIT_SHA",
-  "contract_address": "CONTRACT_ADDRESS",
-  "contract_source": "contracts/CanonWorldStateReferee.py",
-  "contract_source_sha256": "SOURCE_SHA256",
-  "runner_dependency": "PINNED_RUNNER_HEADER",
+  "network": {
+    "chain_id": 0,
+    "genvm_chain_id": 0,
+    "name": "NETWORK_NAME",
+    "rpc": "RPC_ORIGIN_WITHOUT_CREDENTIALS"
+  },
+  "source": {
+    "commit": "FULL_COMMIT_SHA",
+    "path": "contracts/CanonWorldStateReferee.py",
+    "sha256": "SOURCE_SHA256",
+    "bytes": 0,
+    "runner": "PINNED_RUNNER",
+    "contract_version": "0.2.0",
+    "policy_version": "CANON_WORLD_STATE_TRANSITION_V2"
+  },
   "deployment_input_bytes": 0,
-  "deployment_receipt": {},
-  "deployment_transaction_identifiers": [],
-  "constructor": {
-    "world_id": "WORLD_ID",
-    "canon_version": "CANON_VERSION",
-    "canon_rules_json": "[]",
-    "initial_state_json": "{}",
-    "transition_catalog_json": "[]"
+  "constructor_args": ["WORLD_ID", "CANON_VERSION", "[]", "{}", "[]"],
+  "deployment": {
+    "transaction": "GENLAYER_TRANSACTION_HASH",
+    "contract_address": "CONTRACT_ADDRESS",
+    "deployer": "CONTROLLER_ADDRESS",
+    "transaction_provenance": {},
+    "accepted_consensus": {},
+    "accepted_receipt": {},
+    "finalization_evm_transaction": "EVM_TRANSACTION_HASH",
+    "finalization_evm_proof": {},
+    "finalized_consensus": {},
+    "finalized_receipt": {}
   },
   "policy": {},
-  "controller": "CONTROLLER_ADDRESS",
-  "smoke": {
-    "request_reference": "DEPLOY-SMOKE-001",
-    "receipt": {},
-    "transaction_identifiers": [],
+  "config_digest": "CONFIG_DIGEST",
+  "genesis": {},
+  "semantic_smoke": {
+    "submission_intent_recorded": false,
+    "transaction": "GENLAYER_TRANSACTION_HASH",
+    "args": [],
+    "sender": "CONTROLLER_ADDRESS",
+    "decision_id": 1,
+    "transaction_provenance": {},
+    "accepted_consensus": {},
+    "accepted_receipt": {},
+    "finalization_evm_transaction": "EVM_TRANSACTION_HASH",
+    "finalization_evm_proof": {},
+    "finalized_consensus": {},
+    "finalized_receipt": {},
     "decision": {},
     "state_before": {},
-    "state_after": {}
+    "state_after": {},
+    "state_history_entry": {},
+    "lineage": {},
+    "latest_final_verified": false
   },
   "limitations": []
 }

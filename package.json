@@ -1,0 +1,19 @@
+{
+  "name": "canon-world-state-referee",
+  "version": "0.2.0",
+  "description": "Reusable GenLayer Intelligent Contract for bounded canon-constrained game-state transitions.",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "genlayer-js": "1.1.8",
+    "viem": "2.55.11"
+  },
+  "scripts": {
+    "check:deploy": "node --check deploy/001_deploy_and_smoke.js",
+    "test:tooling": "node --test tests/tooling/deploy-script.test.mjs"
+  }
+}

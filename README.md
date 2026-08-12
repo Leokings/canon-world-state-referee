@@ -124,7 +124,9 @@ State digests form an explicit chain: each non-genesis digest binds the configur
 
 ## Development
 
-Python 3.11+ is recommended.
+Python 3.11+ and Node.js 18+ are recommended. Python dependencies and the
+Bradbury proof-runner dependencies are pinned in `requirements.txt` and
+`package-lock.json`.
 
 ```powershell
 python -m pip install -r requirements.txt
@@ -132,6 +134,9 @@ genvm-lint check contracts/CanonWorldStateReferee.py
 genvm-lint typecheck contracts/CanonWorldStateReferee.py
 genvm-lint schema contracts/CanonWorldStateReferee.py --json
 pytest tests/direct -q
+npm ci --ignore-scripts
+npm run check:deploy
+npm run test:tooling
 ```
 
 The contract pins a concrete production runner in its first line. It does not use `py-genlayer:test` or `py-genlayer:latest`.
@@ -160,7 +165,9 @@ Transaction acceptance or finalization alone is not counted as success; integrat
 
 ## Deployment and smoke recording
 
-The harness checks the pinned runner and portable deployment-input size, deploys the bounded example, executes an exact semantic transition, verifies the final state, and writes an auditable JSON record:
+The Python harness checks the pinned runner and portable deployment-input size,
+deploys the bounded example, executes an exact semantic transition, verifies
+the final state, and writes an auditable JSON record:
 
 ```powershell
 $env:CANON_DEPLOY_NETWORK = "studionet"
@@ -170,12 +177,23 @@ gltest deploy/001_deploy_and_smoke.py -v -s --network studionet
 
 For Bradbury, set both the gltest network and `CANON_DEPLOY_NETWORK` to `testnet_bradbury`. Do not label a deployment as Bradbury if the CLI was pointed at StudioNet.
 
+For publishable Bradbury evidence, the JavaScript harness at
+`deploy/001_deploy_and_smoke.js` additionally checkpoints every submitted hash,
+verifies decoded deployment and call provenance, explicitly finalizes every
+GenLayer transaction, verifies the corresponding EVM finalization calldata and
+receipt, binds the decision ID to the consensus return value, proves the state
+digest lineage, and re-reads the result through `latest-final`. It applies the
+Bradbury gas ceiling only to a fresh deployment transaction; semantic writes
+use normal estimation. See [docs/ONCHAIN_TESTING.md](docs/ONCHAIN_TESTING.md) for
+fresh and resume commands.
+
 ## Repository layout
 
 ```text
 contracts/       Intelligent Contract
 tests/direct/    fast business-logic, validation, and validator-hook tests
 tests/integration/ full-consensus deployment and exact semantic test
+tests/tooling/   JavaScript proof-harness safety and provenance tests
 deploy/          deploy-and-smoke harness
 deployments/     record template; generated records are ignored until reviewed
 examples/        constructor and call fixtures
@@ -187,7 +205,8 @@ docs/            on-chain and portal-submission notes
 - GenVM lint and semantic validation: passing
 - GenVM typecheck: passing with no diagnostics
 - ABI schema extraction: passing
-- Direct tests: 64 passing
+- Direct tests: 68 passing
+- JavaScript proof-harness tests: 9 passing
 
 Hosted StudioNet and Bradbury results must be recorded after they actually run; this repository does not claim an undeployed address or validator vote count.
 
