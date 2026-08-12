@@ -206,7 +206,7 @@ docs/            on-chain and portal-submission notes
 - GenVM typecheck: passing with no diagnostics
 - ABI schema extraction: passing
 - Direct tests: 68 passing
-- JavaScript proof-harness tests: 9 passing
+- JavaScript proof-harness tests: 14 passing
 
 Hosted StudioNet and Bradbury results must be recorded after they actually run; this repository does not claim an undeployed address or validator vote count.
 

@@ -5,6 +5,9 @@
   "recorded_at": "YYYY-MM-DDTHH:MM:SSZ",
   "network": {
     "chain_id": 0,
+    "rpc_chain_id": 0,
+    "rpc_chain_id_hex": "0x0",
+    "live_chain_id_verified": false,
     "genvm_chain_id": 0,
     "name": "NETWORK_NAME",
     "rpc": "RPC_ORIGIN_WITHOUT_CREDENTIALS"
@@ -16,11 +19,23 @@
     "bytes": 0,
     "runner": "PINNED_RUNNER",
     "contract_version": "0.2.0",
-    "policy_version": "CANON_WORLD_STATE_TRANSITION_V2"
+    "policy_version": "CANON_WORLD_STATE_TRANSITION_V2",
+    "commit_proof": {
+      "verified": false,
+      "object_type": "commit",
+      "blob_sha256": "SOURCE_SHA256",
+      "bytes": 0
+    }
   },
   "deployment_input_bytes": 0,
   "constructor_args": ["WORLD_ID", "CANON_VERSION", "[]", "{}", "[]"],
   "deployment": {
+    "submission_intent_recorded": false,
+    "submission_intent": {
+      "source_sha256": "SOURCE_SHA256",
+      "constructor_args_sha256": "CONSTRUCTOR_ARGS_SHA256",
+      "leader_only": false
+    },
     "transaction": "GENLAYER_TRANSACTION_HASH",
     "contract_address": "CONTRACT_ADDRESS",
     "deployer": "CONTROLLER_ADDRESS",

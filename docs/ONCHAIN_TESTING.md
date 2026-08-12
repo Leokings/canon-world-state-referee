@@ -60,11 +60,17 @@ $env:CANON_DEPLOYMENT_OUTPUT = "deployments/bradbury-YYYY-MM-DD.json"
 genlayer deploy
 ```
 
-The chain ID, network name, local source, decoded constructor, deployed source,
+The static SDK chain ID, live `eth_chainId`, network name, local source, decoded constructor, deployed source,
 schema, immutable policy, configuration digest, controller, and genesis digest
 must all match before the harness submits the semantic call. Review the generated
 record and independently confirm the address and transactions in the Bradbury
 explorer before committing it.
+
+The harness also resolves `CANON_SOURCE_COMMIT` as a Git commit and reads
+`contracts/CanonWorldStateReferee.py` directly from that commit. Its bytes must
+exactly equal the local source. A syntactically valid but nonexistent commit, a
+non-commit object, an arbitrary SHA, or a commit whose contract differs from the
+working source is rejected before any transaction work.
 
 ### Resume the accepted 2026-08-12 deployment
 
@@ -95,6 +101,11 @@ deployment. The latter—not outer chain ID `4221`—is included in the immutabl
 configuration digest. The harness records both and refuses a missing or invalid
 GenVM chain ID.
 
+The outer identity is checked twice: against the SDK's static chain definition
+and against a live `eth_chainId` response from the configured RPC. Both IDs and
+the successful live verification are written to the checkpoint. A stale or
+misdirected RPC is rejected even when the static SDK metadata says Bradbury.
+
 Bradbury block `17287921` contains two transactions with the deployment's exact
 finalization calldata. The configured hash above is the transaction at index 1
 with receipt status `0x1`. Transaction
@@ -109,6 +120,13 @@ transaction, set `CANON_DEPLOYMENT_FINALIZATION_EVM_TX`, `CANON_SEMANTIC_TX`, or
 submission intent without a captured GenLayer hash fails closed: recover the
 original hash or start with a fresh deployment and output file. The harness will
 not risk a duplicate call and later claim that transaction as original proof.
+
+Fresh deployments use the same crash-window protection. Before calling
+`deployContract`, the harness durably records an intent containing the exact
+source digest, constructor-argument digest, and `leaderOnly=false`. If the
+process loses the broadcast result, a resume without `CANON_DEPLOYMENT_TX`
+fails closed. Recover the original hash or use a new output file; it will not
+broadcast a second deployment and misrepresent it as the first.
 
 On Bradbury, a transaction already marked `FINALIZED` without a known matching
 EVM finalization hash is also left incomplete. Supply the correct hash so the

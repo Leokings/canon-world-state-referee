@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { abi as genlayerAbi } from "genlayer-js";
@@ -12,6 +13,7 @@ const RUNNER = "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6
 const DIGEST_DOMAIN = "GENLAYER_CANON_WORLD_STATE_REFEREE";
 const FINALIZE_TRANSACTION_SELECTOR = "0xb2efda83";
 const DEFAULT_BRADBURY_DEPLOYMENT_GAS = 60_000_000n;
+export const FINALITY_POLL_INTERVAL_MS = 5_000;
 const STATUS_NAMES = new Map([[5, "ACCEPTED"], [7, "FINALIZED"], [11, "READY_TO_FINALIZE"]]);
 const RESULT_NAMES = new Map([[1, "AGREE"], [6, "MAJORITY_AGREE"]]);
 const EXECUTION_NAMES = new Map([[1, "FINISHED_WITH_RETURN"]]);
@@ -183,7 +185,7 @@ function requiredEnvironment(names) {
   if (missing.length) throw new Error(`Missing required environment: ${missing.join(", ")}`);
 }
 
-function assertNetwork(client) {
+export async function assertNetwork(client) {
   const expectedChainId = Number(process.env.CANON_EXPECTED_CHAIN_ID || "");
   const expectedGenVmChainId = Number(process.env.CANON_EXPECTED_GENVM_CHAIN_ID || "");
   const expectedName = String(process.env.CANON_EXPECTED_NETWORK_NAME || "").trim();
@@ -199,6 +201,67 @@ function assertNetwork(client) {
   if (expectedName && String(client.chain?.name) !== expectedName) {
     throw new Error(`Wrong network ${client.chain?.name}; expected ${expectedName}`);
   }
+  let rawLiveChainId;
+  try {
+    rawLiveChainId = await client.request({ method: "eth_chainId", params: [] });
+  } catch (error) {
+    throw new Error(`Live eth_chainId query failed: ${String(error)}`);
+  }
+  if (!/^0x[0-9a-fA-F]+$/.test(String(rawLiveChainId || ""))) {
+    throw new Error(`Live eth_chainId returned an invalid value: ${String(rawLiveChainId)}`);
+  }
+  const liveChainIdBigInt = BigInt(rawLiveChainId);
+  if (liveChainIdBigInt > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new Error("Live eth_chainId exceeds the safe integer range");
+  }
+  const liveChainId = Number(liveChainIdBigInt);
+  if (liveChainId !== expectedChainId || liveChainId !== Number(client.chain?.id)) {
+    throw new Error(
+      `Live RPC chain ID ${liveChainId} disagrees with expected/static chain ID ` +
+      `${expectedChainId}/${String(client.chain?.id)}`,
+    );
+  }
+  return {
+    expected_chain_id: expectedChainId,
+    sdk_chain_id: Number(client.chain.id),
+    rpc_chain_id: liveChainId,
+    rpc_chain_id_hex: String(rawLiveChainId).toLowerCase(),
+    verified: true,
+  };
+}
+
+export function verifySourceCommit(code, commit, gitRunner = (args) => execFileSync(
+  "git",
+  args,
+  { cwd: process.cwd(), encoding: null, maxBuffer: 2_000_000 },
+)) {
+  assertLowerHex(commit, 40, "CANON_SOURCE_COMMIT");
+  let objectType;
+  let committedSource;
+  try {
+    objectType = Buffer.from(gitRunner(["cat-file", "-t", commit])).toString("utf8").trim();
+    committedSource = Buffer.from(gitRunner([
+      "show",
+      "--no-ext-diff",
+      "--no-textconv",
+      `${commit}:contracts/CanonWorldStateReferee.py`,
+    ]));
+  } catch (error) {
+    throw new Error(`CANON_SOURCE_COMMIT cannot be resolved to the contract source: ${String(error)}`);
+  }
+  if (objectType !== "commit") {
+    throw new Error(`CANON_SOURCE_COMMIT resolves to ${objectType || "unknown"}, not a commit`);
+  }
+  const localSource = Buffer.from(code, "utf8");
+  if (!committedSource.equals(localSource)) {
+    throw new Error("CANON_SOURCE_COMMIT contract blob differs byte-for-byte from the local contract source");
+  }
+  return {
+    verified: true,
+    object_type: objectType,
+    blob_sha256: createHash("sha256").update(committedSource).digest("hex"),
+    bytes: committedSource.length,
+  };
 }
 
 function outputPath() {
@@ -252,6 +315,35 @@ function checkpointBase(code, sourceSha256, constructorArgs, client) {
   };
 }
 
+export async function prepareProofRun(
+  client,
+  code,
+  constructorArgs,
+  file,
+  sourceVerifier = verifySourceCommit,
+) {
+  const networkProof = await assertNetwork(client);
+  const sourceCommitProof = sourceVerifier(code, process.env.CANON_SOURCE_COMMIT);
+  const sourceSha256 = createHash("sha256").update(code).digest("hex");
+  const expectedCheckpoint = checkpointBase(code, sourceSha256, constructorArgs, client);
+  Object.assign(expectedCheckpoint.network, {
+    rpc_chain_id: networkProof.rpc_chain_id,
+    rpc_chain_id_hex: networkProof.rpc_chain_id_hex,
+    live_chain_id_verified: true,
+  });
+  expectedCheckpoint.source.commit_proof = sourceCommitProof;
+  const checkpoint = loadCheckpoint(file, expectedCheckpoint);
+  checkpoint.network.genvm_chain_id = Number(process.env.CANON_EXPECTED_GENVM_CHAIN_ID);
+  Object.assign(checkpoint.network, {
+    rpc_chain_id: networkProof.rpc_chain_id,
+    rpc_chain_id_hex: networkProof.rpc_chain_id_hex,
+    live_chain_id_verified: true,
+  });
+  checkpoint.source.commit_proof = sourceCommitProof;
+  saveCheckpoint(file, checkpoint);
+  return { checkpoint, network_proof: networkProof, source_commit_proof: sourceCommitProof };
+}
+
 function loadCheckpoint(file, expected) {
   if (!existsSync(file)) return expected;
   let current;
@@ -263,6 +355,8 @@ function loadCheckpoint(file, expected) {
   if (
     current?.schema_version !== expected.schema_version || current?.project !== expected.project ||
     current?.network?.chain_id !== expected.network.chain_id ||
+    (current?.network?.rpc_chain_id !== undefined &&
+      current.network.rpc_chain_id !== expected.network.rpc_chain_id) ||
     (current?.config_digest && current?.network?.genvm_chain_id !== undefined &&
       current.network.genvm_chain_id !== expected.network.genvm_chain_id) ||
     current?.source?.commit !== expected.source.commit || current?.source?.sha256 !== expected.source.sha256 ||
@@ -458,10 +552,11 @@ export async function finalizeWhenReady(client, transactionHash, label, step, en
         );
         saveCheckpoint(file, checkpoint);
       }
+      await new Promise((resolve) => setTimeout(resolve, FINALITY_POLL_INTERVAL_MS));
       continue;
     }
     if (status !== "ACCEPTED") throw new Error(`${label} entered unexpected status ${status}`);
-    await new Promise((resolve) => setTimeout(resolve, 5_000));
+    await new Promise((resolve) => setTimeout(resolve, FINALITY_POLL_INTERVAL_MS));
   }
   throw new Error(`${label} did not become finalizable`);
 }
@@ -482,6 +577,40 @@ async function withDeploymentGasCeiling(client, operation) {
   } finally {
     client.estimateTransactionGas = original;
   }
+}
+
+export async function submitFreshDeployment(client, code, args, checkpoint, file) {
+  const step = checkpoint.deployment;
+  if (step.submission_intent_recorded === true) {
+    throw new Error(
+      "Deployment submission intent exists without a captured hash; recover CANON_DEPLOYMENT_TX " +
+      "or use a fresh output file instead of risking a duplicate deployment",
+    );
+  }
+  const intent = {
+    source_sha256: checkpoint.source.sha256,
+    constructor_args_sha256: createHash("sha256").update(jsonString(args)).digest("hex"),
+    leader_only: false,
+  };
+  Object.assign(step, { submission_intent_recorded: true, submission_intent: intent });
+  saveCheckpoint(file, checkpoint);
+  let gasCeiling = null;
+  let hash;
+  try {
+    hash = await withDeploymentGasCeiling(client, async (ceiling) => {
+      gasCeiling = ceiling ? ceiling.toString() : null;
+      return client.deployContract({ code, args, leaderOnly: false });
+    });
+  } catch (error) {
+    throw new Error(
+      "Deployment broadcast outcome is unknown and will not be retried; recover CANON_DEPLOYMENT_TX " +
+      `or use a fresh output file. ${String(error)}`,
+    );
+  }
+  assertHash(hash, "CANON_DEPLOYMENT_TX");
+  Object.assign(step, { transaction: hash, evm_gas_ceiling: gasCeiling });
+  saveCheckpoint(file, checkpoint);
+  return { hash, gas_ceiling: gasCeiling };
 }
 
 function assertSchema(schema) {
@@ -593,6 +722,48 @@ function expectedStateAfter() {
   return { ...INITIAL_STATE, dragon_awake: true };
 }
 
+function expectedSemanticArgs(before) {
+  return [
+    SMOKE_REFERENCE,
+    before.state_digest,
+    SMOKE_EVENT,
+    SMOKE_TRANSITION,
+    canonicalText(expectedStateAfter()),
+  ];
+}
+
+export function assertGenesisStateBefore(policy, before) {
+  const expectedDigest = contractDigest("STATE", [
+    policy.config_digest,
+    "0",
+    "GENESIS",
+    "",
+    canonicalText(INITIAL_STATE),
+  ]);
+  if (
+    !before || before.world_id !== policy.world_id ||
+    before.canon_version !== policy.canon_version || Number(before.state_version) !== 0 ||
+    before.state_json !== canonicalText(INITIAL_STATE) || before.state_digest !== expectedDigest ||
+    before.config_digest !== policy.config_digest
+  ) {
+    throw new Error(`Semantic state_before is not the exact immutable genesis state: ${jsonString(before)}`);
+  }
+  return expectedDigest;
+}
+
+export function resumeSemanticInputs(step, policy) {
+  if (!step || step.submission_intent_recorded !== true) {
+    throw new Error("Captured semantic transaction lacks its durable submission intent");
+  }
+  const before = plainValue(step.state_before);
+  assertGenesisStateBefore(policy, before);
+  const expectedArgs = expectedSemanticArgs(before);
+  if (!Array.isArray(step.args) || jsonString(plainValue(step.args)) !== jsonString(expectedArgs)) {
+    throw new Error("Captured semantic transaction checkpoint args do not match the exact genesis-bound call");
+  }
+  return { before, args: expectedArgs };
+}
+
 function expectedConstructorArgs() {
   const worldId = String(process.env.CANON_WORLD_ID || "EMBER-REALM");
   const canonVersion = String(process.env.CANON_VERSION || "CANON-V1");
@@ -666,27 +837,34 @@ export function assertExactSemanticRecord({ policy, before, decision, after, his
   return { request_digest: requestDigest, state_digest_after: expectedAfterDigest };
 }
 
-async function submitAndProveSemantic(client, address, policy, checkpoint, file) {
+export async function submitAndProveSemantic(client, address, policy, checkpoint, file) {
   const step = checkpoint.semantic_smoke;
-  const before = await retryRead("Finalized state before semantic call", () => read(client, address, "get_world_state"));
-  const countBefore = Number(await retryRead("Finalized decision count", () => read(client, address, "get_decision_count")));
-  const args = [
-    SMOKE_REFERENCE,
-    before.state_digest,
-    SMOKE_EVENT,
-    SMOKE_TRANSITION,
-    canonicalText(expectedStateAfter()),
-  ];
   let hash = envOrCheckpoint("CANON_SEMANTIC_TX", step.transaction);
   if (hash) assertHash(hash, "CANON_SEMANTIC_TX");
+  let before;
+  let args;
+  if (hash) {
+    ({ before, args } = resumeSemanticInputs(step, policy));
+  } else {
+    before = await retryRead(
+      "Finalized state before fresh semantic call",
+      () => read(client, address, "get_world_state"),
+    );
+    const countBefore = Number(await retryRead(
+      "Finalized decision count before fresh semantic call",
+      () => read(client, address, "get_decision_count"),
+    ));
+    assertGenesisStateBefore(policy, before);
+    if (countBefore !== 0) {
+      throw new Error("Fresh semantic submission requires exactly zero prior decisions");
+    }
+    args = expectedSemanticArgs(before);
+  }
   if (!hash) {
     if (step.submission_intent_recorded === true) {
       throw new Error(
         "Semantic submission intent exists without a captured hash; recover CANON_SEMANTIC_TX or use a fresh deployment/output",
       );
-    }
-    if (Number(before?.state_version) !== 0 || countBefore !== 0) {
-      throw new Error("The contract has advanced without a captured semantic transaction hash; refusing to infer provenance from state");
     }
     Object.assign(step, { submission_intent_recorded: true, args, state_before: plainValue(before) });
     saveCheckpoint(file, checkpoint);
@@ -763,7 +941,6 @@ async function submitAndProveSemantic(client, address, policy, checkpoint, file)
 }
 
 export default async function deployAndSmoke(client) {
-  assertNetwork(client);
   requiredEnvironment([
     "CANON_SOURCE_COMMIT",
     "CANON_DEPLOYMENT_OUTPUT",
@@ -776,22 +953,15 @@ export default async function deployAndSmoke(client) {
   const args = expectedConstructorArgs();
   const deploymentBytes = Buffer.byteLength(code, "utf8") + Buffer.byteLength(jsonString(args), "utf8");
   if (deploymentBytes >= 50_000) throw new Error(`Deployment input is ${deploymentBytes} bytes; portable limit is below 50,000`);
-  const sourceSha256 = createHash("sha256").update(code).digest("hex");
-  const checkpoint = loadCheckpoint(file, checkpointBase(code, sourceSha256, args, client));
-  checkpoint.network.genvm_chain_id = Number(process.env.CANON_EXPECTED_GENVM_CHAIN_ID);
-  saveCheckpoint(file, checkpoint);
+  const { checkpoint } = await prepareProofRun(client, code, args, file);
 
   let deploymentHash = envOrCheckpoint("CANON_DEPLOYMENT_TX", checkpoint.deployment.transaction);
   let gasCeiling = checkpoint.deployment.evm_gas_ceiling || null;
   if (deploymentHash) assertHash(deploymentHash, "CANON_DEPLOYMENT_TX");
   if (!deploymentHash) {
-    deploymentHash = await withDeploymentGasCeiling(client, async (ceiling) => {
-      gasCeiling = ceiling ? ceiling.toString() : null;
-      return client.deployContract({ code, args, leaderOnly: false });
-    });
-    assertHash(deploymentHash, "CANON_DEPLOYMENT_TX");
-    Object.assign(checkpoint.deployment, { transaction: deploymentHash, evm_gas_ceiling: gasCeiling });
-    saveCheckpoint(file, checkpoint);
+    const submitted = await submitFreshDeployment(client, code, args, checkpoint, file);
+    deploymentHash = submitted.hash;
+    gasCeiling = submitted.gas_ceiling;
     console.log(`CANON_DEPLOYMENT_TX=${deploymentHash}`);
   }
 
