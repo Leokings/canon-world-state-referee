@@ -1,4 +1,12 @@
+networks:
+  default: localnet
+  localnet: {}
+  studionet: {}
+  testnet_asimov: {}
+  testnet_bradbury:
+    accounts:
+      - ${BRADBURY_GLTEST_PRIVATE_KEY}
+
 paths:
   contracts: contracts
   artifacts: artifacts/gltest
-
