@@ -208,7 +208,7 @@ docs/            on-chain and portal-submission notes
 - Direct tests: 68 passing
 - JavaScript proof-harness tests: 14 passing
 
-Hosted StudioNet and Bradbury results must be recorded after they actually run; this repository does not claim an undeployed address or validator vote count.
+Finalized Bradbury evidence is recorded in [deployments/bradbury-2026-08-12.json](deployments/bradbury-2026-08-12.json). Deployment finalized with 5/5 `AGREE`; the exact semantic call finalized with four `AGREE` votes and one `TIMEOUT`, returned `VALID_TRANSITION`, and moved state version 0 to 1.
 
 ## Reuse
 

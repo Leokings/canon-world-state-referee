@@ -1,6 +1,6 @@
 # Portal submission draft
 
-Use these fields only after the private repository has been made reviewable and a real Bradbury deployment record exists. Do not submit placeholders as evidence.
+Use these finalized fields after the private repository has been made accessible to portal reviewers.
 
 **Title**
 
@@ -11,11 +11,11 @@ Canon-Constrained World-State Referee — Reusable Intelligent Contract
 **Notes / Description**
 
 ```text
-Built and deployed an MIT-licensed Canon-Constrained World-State Referee, a reusable GenLayer Intelligent Contract for lore-governed games. The immutable deploying controller submits one fictional event, a current-state digest, one predefined transition, and the complete expected next state. It returns VALID_TRANSITION, CANON_CONFLICT, CURRENT_STATE_CONFLICT, MISSING_PREREQUISITE, AMBIGUOUS, or UNSUPPORTED_EVENT.
+Built and deployed an MIT-licensed Canon-Constrained World-State Referee, a reusable GenLayer IC for lore-governed games. A controller submits an event, state digest, predefined transition and complete next state. It returns VALID_TRANSITION, CANON_CONFLICT, CURRENT_STATE_CONFLICT, MISSING_PREREQUISITE, AMBIGUOUS or UNSUPPORTED_EVENT.
 
-This uses real GenLayer consensus, not an AI storyteller. The leader judges only whether the event activates an exact immutable transition; validators independently audit the substantive result and fixed-precedence citations. Deterministic code enforces controller authorization, globally unique references, exact required state and patch-derived next state, stale-state guards, canonical JSON, and hash-chained history before any valid state is applied.
+This uses real GenLayer consensus, not an AI storyteller. The leader decides only whether the event activates an immutable transition; validators independently audit the verdict and bounded citations. Deterministic code enforces controller-only writes, unique references, exact prerequisites and patch-derived next state, stale-state guards, canonical JSON and hash-chained history.
 
-Includes a pinned runner, initial-state-bound config digest, append-only decisions and hash-chained state history, prompt-injection defenses, 68 direct tests, full-consensus tests, deployment tooling, docs, and MIT reuse rights.
+Includes a pinned runner, commit- and chain-bound proof harness, prompt-injection defenses, 68 direct and 14 harness tests. Bradbury deployment and exact semantic smoke finalized as VALID_TRANSITION, moving state 0→1, with four AGREE votes and one TIMEOUT.
 ```
 
 **Evidence entries**
@@ -24,13 +24,13 @@ Includes a pinned runner, initial-state-bound config digest, append-only decisio
    `https://github.com/Leokings/canon-world-state-referee`
 
 2. **GenLayer Explorer Contract**  
-   `BRADBURY_EXPLORER_CONTRACT_URL`
+   `https://explorer-bradbury.genlayer.com/address/0x16979e840253025C089eB59419dD97f222E3143C`
 
 3. **GitHub File — exact contract source**  
-   `https://github.com/Leokings/canon-world-state-referee/blob/COMMIT_SHA/contracts/CanonWorldStateReferee.py`
+   `https://github.com/Leokings/canon-world-state-referee/blob/08ebea007c5a936a89f12603deef86b15d28928d/contracts/CanonWorldStateReferee.py`
 
 4. **GitHub File — finalized deployment proof**  
-   `https://github.com/Leokings/canon-world-state-referee/blob/COMMIT_SHA/deployments/bradbury-smoke.json`
+   `https://github.com/Leokings/canon-world-state-referee/blob/89c4e7a70d710fb069da320e1105eb6a0c6d77ae/deployments/bradbury-2026-08-12.json`
 
 **Contribution date**
 
@@ -44,11 +44,4 @@ Includes a pinned runner, initial-state-bound config digest, append-only decisio
 Intelligent Contracts
 ```
 
-## Before submission
-
-- Replace `COMMIT_SHA` with the immutable deployed source commit.
-- Replace the explorer placeholder with the actual Bradbury contract URL.
-- Confirm the deployment JSON contains successful execution and finalized consensus evidence.
-- Make the repository/evidence accessible to portal reviewers; a private URL they cannot access is not valid evidence.
-- Update the direct-test count if the audited suite changes.
-- Complete the CAPTCHA manually and submit under **Intelligent Contracts**.
+The repository is private, so grant portal reviewers access or make it public before submitting. Complete the CAPTCHA manually and submit under **Intelligent Contracts**.

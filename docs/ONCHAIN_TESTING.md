@@ -72,10 +72,10 @@ exactly equal the local source. A syntactically valid but nonexistent commit, a
 non-commit object, an arbitrary SHA, or a commit whose contract differs from the
 working source is rejected before any transaction work.
 
-### Resume the accepted 2026-08-12 deployment
+### Verify the finalized 2026-08-12 proof
 
-The harness can resume the already accepted exact-source deployment without
-deploying a second contract:
+The harness can re-verify the finalized exact-source deployment and committed
+semantic checkpoint without deploying another contract:
 
 ```powershell
 $env:CANON_EXPECTED_CHAIN_ID = "4221"
