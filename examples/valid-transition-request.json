@@ -1,0 +1,8 @@
+{
+  "request_reference": "EVENT-001",
+  "expected_state_digest": "READ_THIS_FROM_get_world_state",
+  "event_text": "The active fire mage presents the held Ember Key and awakens the sleeping Ember Dragon.",
+  "transition_id": "AWAKEN_DRAGON",
+  "proposed_next_state_json": "{\"active_hero_class\":\"FIRE_MAGE\",\"dragon_awake\":true,\"ember_key_held\":true,\"northern_gate_status\":\"DESTROYED\",\"region\":\"ASHEN_COURTYARD\"}"
+}
+

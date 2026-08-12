@@ -1,0 +1,11 @@
+[
+  {
+    "id": "RULE-DRAGON-AWAKENING",
+    "text": "The Ember Dragon can awaken only when the active hero is a fire mage holding the Ember Key."
+  },
+  {
+    "id": "RULE-GATE",
+    "text": "A destroyed gate cannot be used to enter a region until that gate has been repaired."
+  }
+]
+

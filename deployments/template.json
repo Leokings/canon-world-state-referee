@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "project": "canon-world-state-referee",
+  "network": "NETWORK_NAME",
+  "chain_id": 0,
+  "recorded_at": "YYYY-MM-DDTHH:MM:SSZ",
+  "source_commit": "FULL_COMMIT_SHA",
+  "contract_address": "CONTRACT_ADDRESS",
+  "contract_source": "contracts/CanonWorldStateReferee.py",
+  "contract_source_sha256": "SOURCE_SHA256",
+  "runner_dependency": "PINNED_RUNNER_HEADER",
+  "deployment_input_bytes": 0,
+  "deployment_receipt": {},
+  "deployment_transaction_identifiers": [],
+  "constructor": {
+    "world_id": "WORLD_ID",
+    "canon_version": "CANON_VERSION",
+    "canon_rules_json": "[]",
+    "initial_state_json": "{}",
+    "transition_catalog_json": "[]"
+  },
+  "policy": {},
+  "controller": "CONTROLLER_ADDRESS",
+  "smoke": {
+    "request_reference": "DEPLOY-SMOKE-001",
+    "receipt": {},
+    "transaction_identifiers": [],
+    "decision": {},
+    "state_before": {},
+    "state_after": {}
+  },
+  "limitations": []
+}

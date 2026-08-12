@@ -1,0 +1,7 @@
+[
+  "EMBER-REALM",
+  "CANON-V1",
+  "[{\"id\":\"RULE-DRAGON-AWAKENING\",\"text\":\"The Ember Dragon can awaken only when the active hero is a fire mage holding the Ember Key.\"},{\"id\":\"RULE-GATE\",\"text\":\"A destroyed gate cannot be used to enter a region until that gate has been repaired.\"}]",
+  "{\"active_hero_class\":\"FIRE_MAGE\",\"dragon_awake\":false,\"ember_key_held\":true,\"northern_gate_status\":\"DESTROYED\",\"region\":\"ASHEN_COURTYARD\"}",
+  "[{\"id\":\"AWAKEN_DRAGON\",\"description\":\"Awaken the Ember Dragon only when dragon_awake is false, active_hero_class is FIRE_MAGE, and ember_key_held is true. The only effect is dragon_awake becoming true.\",\"required_state\":{\"active_hero_class\":\"FIRE_MAGE\",\"dragon_awake\":false,\"ember_key_held\":true},\"state_patch\":{\"dragon_awake\":true},\"applicable_canon_rule_ids\":[\"RULE-DRAGON-AWAKENING\"]},{\"id\":\"ENTER_NORTH\",\"description\":\"Move into NORTHERN_KEEP only when northern_gate_status is REPAIRED. The only effect is region becoming NORTHERN_KEEP.\",\"required_state\":{\"northern_gate_status\":\"REPAIRED\",\"region\":\"ASHEN_COURTYARD\"},\"state_patch\":{\"region\":\"NORTHERN_KEEP\"},\"applicable_canon_rule_ids\":[\"RULE-GATE\"]}]"
+]
