@@ -13,6 +13,7 @@ from pathlib import Path
 
 from gltest import get_contract_factory
 from gltest.assertions import tx_execution_succeeded
+from gltest.clients import get_gl_client
 from gltest.types import TransactionStatus
 from gltest.utils import extract_contract_address
 from gltest_cli.config.general import get_general_config
@@ -21,6 +22,7 @@ from gltest_cli.config.general import get_general_config
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = ROOT / "contracts" / "CanonWorldStateReferee.py"
 PORTABLE_DEPLOYMENT_INPUT_LIMIT = 50_000
+BRADBURY_DEPLOYMENT_GAS_LIMIT = 60_000_000
 
 CANON = [
     {
@@ -95,6 +97,42 @@ def _atomic_write_json(path, value):
     temporary = path.with_suffix(".json.tmp")
     temporary.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     temporary.replace(path)
+
+
+def _deploy_contract(factory, constructor_args, network):
+    """Use a scoped ceiling when Bradbury's estimator cannot simulate deployment.
+
+    The override applies only to the deployment transaction. Contract writes and
+    finalization continue to use normal estimation, and GenVM/validator execution
+    is unchanged.
+    """
+    if network != "testnet_bradbury":
+        return factory.deploy_contract_tx(
+            args=constructor_args,
+            wait_transaction_status=TransactionStatus.FINALIZED,
+        )
+
+    client = get_gl_client()
+    original_make_request = client.provider.make_request
+
+    def scoped_make_request(method, params=None):
+        if method == "eth_estimateGas":
+            return {
+                "jsonrpc": "2.0",
+                "id": 0,
+                "result": hex(BRADBURY_DEPLOYMENT_GAS_LIMIT),
+            }
+        return original_make_request(method, params=params)
+
+    client.provider.make_request = scoped_make_request
+    print(f"CANON_DEPLOYMENT_EVM_GAS_LIMIT={BRADBURY_DEPLOYMENT_GAS_LIMIT}")
+    try:
+        return factory.deploy_contract_tx(
+            args=constructor_args,
+            wait_transaction_status=TransactionStatus.FINALIZED,
+        )
+    finally:
+        client.provider.make_request = original_make_request
 
 
 def _source_commit():
@@ -260,10 +298,7 @@ def test_deploy_and_smoke():
             return
         before = record["smoke"]["state_before"]
     else:
-        deployment_receipt = factory.deploy_contract_tx(
-            args=constructor_args,
-            wait_transaction_status=TransactionStatus.FINALIZED,
-        )
+        deployment_receipt = _deploy_contract(factory, constructor_args, network)
         assert tx_execution_succeeded(deployment_receipt), deployment_receipt
         contract_address = extract_contract_address(deployment_receipt)
         contract = factory.build_contract(contract_address=contract_address)
